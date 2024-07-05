@@ -14,33 +14,37 @@ prePath=/home/dolphindb/server/clusterDemo/data
 nodePathArr=(/dnode1/modules /dnode2/modules)
 remoteAddressArr=(192.168.56.105 192.168.56.106)
 remoteUsername=root
-remotePassword=xxxx
-for((i=0;i < 4;i++))
-  do
-    curRemoteAddress=${remoteAddressArr[$i]}
-    if [ "$curRemoteAddress" == "$CURRENTIP" ]; then
-      echo "目标地址1: ${localPath}"
-      echo "目标地址2: ${prePath}${nodePathArr[$i]}"
-      `cp $originPath ${localPath} -f`
-      `cp $originPath ${prePath}${nodePathArr[$i]} -f`
-    else
-      expect <<EOF
-      spawn scp -r $originPath $remoteUsername@${remoteAddressArr[$i]}:${prePath}${nodePathArr[$i]}
-      expect {
-        "yes/no" { send "yes\n";exp_continue }
-        "password" { send "$remotePassword\n" }
-      }
-      expect eof
-      expect <<EOF
-        spawn ssh root@${remoteAddressArr[$i]}
-        expect {
-        "yes/no" { send "yes\n";exp_continue }
-        "password" { send "$remotePassword\n" }
-        }
-      expect "]#" { send "cd /home/dolphindb/server\n" }
-      expect "]#" { send "./dolphindb -remoteHost 127.0.0.1 -remotePort 8902 -uid admin -pwd 123456 -run /home/moduleCacheClean.dos\n"}
-      expect "]#" { send "exit\n" }
-      expect eof
-      EOF
-    fi
-  done
+remotePassword=root@1234
+for((i=0;i < ${#remoteAddressArr[*]};i++))
+do
+curRemoteAddress=${remoteAddressArr[$i]}
+if [ "$curRemoteAddress" == "$CURRENTIP" ]; then
+# 本机文件复制
+echo "本机地址1: ${localPath}"
+echo "本机地址2: ${prePath}${nodePathArr[$i]}"
+`cp $originPath ${localPath} -f`
+`cp $originPath ${prePath}${nodePathArr[$i]} -f`
+else
+# 远程环境文件复制
+# scp Module文件到指定服务器
+expect <<EOF
+spawn scp -r $originPath $remoteUsername@${remoteAddressArr[$i]}:${prePath}${nodePathArr[$i]}
+expect "password" { send "$remotePassword\n" }
+expect eof
+spawn scp -r $originPath $remoteUsername@${remoteAddressArr[$i]}:${localPath}
+expect "password" { send "$remotePassword\n" }
+expect eof    
+# scp module缓存清理文件到指定服务器  
+spawn scp -r ./moduleCacheClean.dos $remoteUsername@${remoteAddressArr[$i]}:/home}
+expect "password" { send "$remotePassword\n" } 
+expect eof  
+# 登录指定服务器，执行module缓存清理，以便在线更新module文件
+spawn ssh ${remoteUsername}@${remoteAddressArr[$i]}
+expect "password" { send "$remotePassword\n" }
+expect "]#" { send "cd /home/dolphindb/server\n" }
+expect "]#" { send "./dolphindb -remoteHost 127.0.0.1 -remotePort 8902 -uid admin -pwd 123456 -run /home/moduleCacheClean.dos\n"}
+expect "]#" { send "exit\n" }  
+expect eof
+EOF
+fi
+done
