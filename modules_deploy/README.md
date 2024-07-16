@@ -4,6 +4,10 @@
 
 ## 使用说明
 
+在不改动的脚本的前提下，在服务器的 home 文件夹下新建 moduleDeploy，将 moduleCacheClean.dos 和 run.sh 放入 moduleDeploy 中执行即可
+
+run.sh 中可能需要手动修改的地方，DolphinDB 的路径，节点名称，其他可不用修改
+
 ```shell
 localPath=/home/dolphindb/server/modules
 prePath=/home/dolphindb/server/clusterDemo/data
